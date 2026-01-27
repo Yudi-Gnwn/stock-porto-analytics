@@ -8,16 +8,10 @@ Dashboard saham yang menampilkan alokasi portofolio, Sharpe Ratio, CAGR, volatil
 ### ✨ Fitur
 ---
 
-- Data saham real time - **Yahoo Finance**
-- Alokasi beban portofolio - **pie chart**
-- Key performance metrics:
-  - Sharpe Ratio
-  - Compound Annual Growth Rate (CAGR)
-  - Max Drawdown
-  - Volatility
-- Monthly returns - **heatmap**
-- Cumulative & yearly return charts
-- performance report **HTML** yang dapat diunduh
+- Data saham real time & Alokasi beban portofolio
+- Key performance metrics: Sharpe Ratio, CAGR, Max Drawdown, Volatility
+- Monthly & yearly return charts 
+- Report performa portofolio (**HTML**) yang dapat diunduh
 
 
 ### 🛠️ Tools
@@ -58,8 +52,6 @@ Dashboard saham yang menampilkan alokasi portofolio, Sharpe Ratio, CAGR, volatil
     python -m streamlit run run.py
     ```
 
-### Note:
 ---
 
-- Projek ini dibuat untuk keperluan portofolio.
-- keputusan investasi yang diambil adalah tanggung jawab individu.
+**Note:** *Projek ini dibuat untuk keperluan portofolio, keputusan investasi yang diambil adalah tanggung jawab individu.*
