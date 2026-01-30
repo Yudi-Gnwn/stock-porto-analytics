@@ -1,20 +1,33 @@
-import streamlit as st, yfinance as yf, quantstats as qs, pandas as pd, plotly.express as px
-import tempfile, os
+import streamlit as st
+import yfinance as yf
+import quantstats as qs
+import pandas as pd
+import plotly.express as px
+import tempfile
+import os
+
 
 def main():
     # Konfig Halaman Streamlit
-    st.set_page_config(page_title="Portofolio Analytics Dashboard", layout="wide")
+    st.set_page_config(
+        page_title="Portofolio Analytics Dashboard", 
+        layout="wide"
+    )
     st.title("Portofolio Analytics Dashboard")
 
     st.sidebar.header("Portofolio Configuration")
 
-    # Daftar Saham NSE
-    nse_ticker = [ "RELIANCE.NS", "HDFCBANK.NS", "TCS.NS", "INFY.NS", "ICICIBANK.NS", 
-                    "LT.NS", "KOTAKBANK.NS", "SBIN.NS", "HCLTECH.NS", "ITC.NS"]
+    # Daftar Saham US
+    us_ticker = [ 
+        "AAPL", "MSFT", "GOOGL", "AMZN", "NVDA", 
+        "META", "TSLA", "JPM", "V", "BRK-B"
+    ]
 
-    # Pick saham 
+    # Pilih saham 
     tickers = st.sidebar.multiselect(
-        "Select NSE Stock", options=nse_ticker, default=["LT.NS", "TCS.NS", "INFY.NS", "ITC.NS"]
+        "Select US Stock",
+        options=us_ticker,
+        default=["AAPL", "AMZN", "TSLA", "BRK-B"]
     )
 
     # Input bobot portofolio
@@ -23,23 +36,26 @@ def main():
     if tickers:
         st.sidebar.markdown("### Assign portofolio weights")
 
-        # slider bobot tiap saham
-        for i in tickers:
-            w = st.sidebar.slider(f"Weight for {i}", min_value=0.0, max_value=1.0, value=round(1/len(tickers), 2), step=0.01)
-            weights.append(w)
+        # slider 
+        for ticker in tickers:
+            weight = st.sidebar.slider(
+                f"Weight for {ticker}",
+                min_value=0.0,
+                max_value=1.0,
+                value=round(1 / len(tickers), 2),
+                step=0.01
+            )
+            weights.append(weight)
 
-        # Normalisasi bobot jika total !=1
-        total = sum(weights)
-        if total != 1 and total != 0:
-            weights = (w / total for w in weights)
+        # Normalisasi bobot agar total = 1
+        total_weight = sum(weights)
+        if total_weight > 0:
+            weights = [w / total_weight for w in weights]
 
-    # opsi 1: sidebar tanggal terpisah
-    # start_date = st.sidebar.date_input("Start Date", value=pd.to_datetime("2025-01-02"))
-    # end_date = st.sidebar.date_input("End Date", value=pd.to_datetime("today"))
-
-    # opsi 2: sidebar tanggal single
+    # Input range tanggal
     start_date, end_date = st.sidebar.date_input(
-        "Select date range: ", value=(pd.to_datetime("2022-01-01"), pd.to_datetime("today"))
+        "Select date range: ",
+        value=(pd.to_datetime("2024-01-01"), pd.to_datetime("today"))
     )
 
     generate_btn = st.sidebar.button("Generate Analysis")
@@ -51,69 +67,105 @@ def main():
         if not tickers:
             st.error("Please select at least one stock.")
             st.stop()
+
         if len(tickers) != len(weights):
             st.error("ticker and wight missmatch.")
             st.stop()
 
         with st.spinner("Taking Data & Performing Analysis..."):
 
-            # Ambil data Saham
-            price_data = yf.download(tickers, start=start_date, end=end_date)["Close"]
+            # Ambil harga penutupan
+            price_data = yf.download(
+                tickers,
+                start=start_date,
+                end=end_date
+            )["Close"]
 
-            # Return harian
+            # Hitung return harian
             returns = price_data.pct_change().dropna()
 
-            # Return porto berdasarkan bobot
+            # Hitung return portofolio
             portofolio_returns = (returns * weights).sum(axis=1)
 
-            # quantstats
+            # Extend quantstats ke pandas
             qs.extend_pandas()
 
-            # Display matrix Utama
-            # --------------------
+
+            # ----------------------
+            # Matrix Utama
             st.subheader("Key Matrix")
 
             col1, col2, col3, col4 = st.columns(4)
-            col1.metric("Sharpe Ratio", f"{qs.stats.sharpe(portofolio_returns):.2f}")
-            col2.metric("Max Drawdown", f"{qs.stats.max_drawdown(portofolio_returns)*100:.2f}%")
-            col3.metric("CAGR", f"{qs.stats.cagr(portofolio_returns)*100:.2f}%")
-            col4.metric("Volatility", f"{qs.stats.volatility(portofolio_returns)*100:.2f}%")
 
-            # Grafik alokasi porto
-            st.subheader("Portofolio Weight")
+            col1.metric(
+                "Sharpe Ratio",
+                f"{qs.stats.sharpe(portofolio_returns):.2f}")
+
+            col2.metric(
+                "Max Drawdown",
+                f"{qs.stats.max_drawdown(portofolio_returns)*100:.2f}%")
+
+            col3.metric(
+                "CAGR",
+                f"{qs.stats.cagr(portofolio_returns)*100:.2f}%")
+
+            col4.metric(
+                "Volatility",
+                f"{qs.stats.volatility(portofolio_returns)*100:.2f}%")
+
+            # Alokasi portofolio (pie chart)
+            st.subheader("Portofolio Allocation")
+            
             fig_pie = px.pie(
                 names=tickers,
                 values=weights,
-                color_discrete_sequence=px.colors.qualitative.Pastel,
-                title="Portofolio Allocation")
-            st.plotly_chart(fig_pie, use_container_width=True)
+            )
+            fig_pie.update_traces(textinfo="percent+label")
+            st.plotly_chart(fig_pie, width="stretch")
 
             # Heatmap return bulanan
-            st.subheader("Montly return heatmap")
-            st.dataframe(portofolio_returns.monthly_returns().style.format("{:.2%}"))
+            st.subheader("Montly Return Heatmap")
+            st.dataframe(
+                portofolio_returns
+                .monthly_returns()
+                .style.format("{:.2%}")
+            )
 
-            # Grafik cumulative returns
-            st.subheader("cumulative returns")
+            # Cumulative returns
+            st.subheader("Cumulative Returns")
             st.line_chart((1 + portofolio_returns).cumprod())
 
             # Return Tahunan
-            st.subheader("End-of-year returns")
-            eoy_returns = portofolio_returns.resample('Y').apply(lambda x: (x + 1).prod() - 1)
-            st.bar_chart(eoy_returns)
+            st.subheader("End-of-Year Returns")
+            yearly_returns = portofolio_returns.resample('YE').apply(
+                lambda x: (x + 1).prod() - 1
+            )
+            st.bar_chart(yearly_returns)
 
             # Generate laporan HTMl
             with tempfile.TemporaryDirectory() as tmpdir:
-                report_path = os.path.join(tmpdir, "portofolio_report.html")
-                qs.reports.html(portofolio_returns, output=report_path, title="Portofolio performance report")
-                with open(report_path, "r", encoding="utf-8") as f:
-                    html_content = f.read()
+                report_path = os.path.join(
+                    tmpdir,
+                    "portofolio_report.html"
+                )
+
+                qs.reports.html(
+                    portofolio_returns,
+                    output=report_path,
+                    title="Portofolio Performance Report"
+                )
+
+                with open(report_path, "r", encoding="utf-8") as file:
+                    html_content = file.read()
+
                 st.download_button(
-                    label="Download Full report",
+                    label="📥 Download Full Report (HTML)",
                     data=html_content,
                     file_name="portofolio_report.html",
                     mime="text/html"
                 )
-        st.success("Analysis successful!, Explore your portfolio metric above.")
+
+        st.success("Analysis Successful!, Explore your portfolio metric above.")
 
 # run-
 if __name__ == "__main__":
