@@ -2,41 +2,64 @@ import streamlit as st
 import yfinance as yf
 import quantstats as qs
 import pandas as pd
+import numpy as np
+from scipy.optimize import minimize
 import plotly.express as px
 import tempfile
 import os
 
+# Logic - Mean Variance Optimization
+def optimize_portfolio(returns):
+    """Mencari bobot optimal untuk memaksimalkan Sharpe Ratio."""
+    num_assets = len(returns.columns)
+    mean_returns = returns.mean()
+    cov_matrix = returns.cov()
+    
+    def objective(weights):
+        # minimize -Sharpe Ratio = Maximize Sharpe
+        p_return = np.sum(mean_returns * weights) * 252
+        p_std = np.sqrt(np.dot(weights.T, np.dot(cov_matrix, weights))) * np.sqrt(252)
+        if p_std == 0: return 0
+        return -(p_return / p_std)
+
+    # Total bobot harus 100%
+    constraints = ({'type': 'eq', 'fun': lambda x: np.sum(x) - 1})
+    
+    # Batas tiap saham 0% - 100%
+    bounds = tuple((0, 1) for _ in range(num_assets))
+    init_guess = num_assets * [1. / num_assets]
+    
+    result = minimize(objective, init_guess, method='SLSQP', bounds=bounds, constraints=constraints)
+    return result.x
 
 def main():
-    # Konfig Halaman Streamlit
+    # Konfigurasi Halaman - Streamlit
     st.set_page_config(
-        page_title="Portofolio Analytics Dashboard", 
+        page_title="Portfolio Analytics Dashboard", 
         layout="wide"
     )
-    st.title("Portofolio Analytics Dashboard")
+    st.title("Portfolio Analytics Dashboard")
 
     st.sidebar.header("Portofolio Configuration")
 
-    # Daftar Saham US
+    # ticker - US Stock
     us_ticker = [ 
         "AAPL", "MSFT", "GOOGL", "AMZN", "NVDA", 
         "META", "TSLA", "JPM", "V", "BRK-B"
     ]
 
-    # Pilih saham 
+    # Selector 
     tickers = st.sidebar.multiselect(
         "Select US Stock",
         options=us_ticker,
-        default=["AAPL", "AMZN", "TSLA", "BRK-B"]
+        default=["AAPL", "AMZN", "TSLA", "GOOGL"]
     )
 
-    # Input bobot portofolio
+    # Input bobot portofolio 
     weights = []
-
     if tickers:
-        st.sidebar.markdown("### Assign portofolio weights")
-
-        # slider 
+        st.sidebar.markdown("### Assign Portfolio Weights")
+        st.sidebar.info("Pastikan bobot saham anda 1.0")
         for ticker in tickers:
             weight = st.sidebar.slider(
                 f"Weight for {ticker}",
@@ -51,16 +74,26 @@ def main():
         total_weight = sum(weights)
         if total_weight > 0:
             weights = [w / total_weight for w in weights]
+            
+            # warning: user input > 1.0
+            if round(total_weight, 2) != 1.0:
+                st.sidebar.info(f"Note: Total input {total_weight:.2f} otomatis dinormalisasi ke 1.0")
+                
+        else:
+            # Kalau user nge-set semua slider ke 0
+            st.error("Total bobot tidak boleh nol.")
+            st.stop()
 
-    # Input range tanggal
+    # Input tanggal
     start_date, end_date = st.sidebar.date_input(
-        "Select date range: ",
+        "Select Date Range",
         value=(pd.to_datetime("2024-01-01"), pd.to_datetime("today"))
     )
 
     generate_btn = st.sidebar.button("Generate Analysis")
 
-    # Logic
+
+    # Main Logic
     if generate_btn:
 
         # Validasi input
@@ -68,93 +101,82 @@ def main():
             st.error("Please select at least one stock.")
             st.stop()
 
-        if len(tickers) != len(weights):
-            st.error("ticker and wight missmatch.")
-            st.stop()
-
         with st.spinner("Taking Data & Performing Analysis..."):
 
-            # Ambil harga penutupan
-            price_data = yf.download(
-                tickers,
-                start=start_date,
-                end=end_date
-            )["Close"]
-
+            # Ambil data harga penutupan
+            price_data = yf.download(tickers, start=start_date, end=end_date)["Close"]
+            
             # Hitung return harian
             returns = price_data.pct_change().dropna()
 
-            # Hitung return portofolio
-            portofolio_returns = (returns * weights).sum(axis=1)
+            # Hitung return portofolio manual
+            port_returns = (returns * weights).sum(axis=1)
+
+            # Hitung bobot optimal menggunakan MVO logic
+            opt_weights = optimize_portfolio(returns)
+            opt_returns = (returns * opt_weights).sum(axis=1)
 
             # Extend quantstats ke pandas
             qs.extend_pandas()
 
 
-            # ----------------------
-            # Matrix Utama
-            st.subheader("Key Matrix")
-
+            # VISUALISASI
+            # ------------
+            # Key Matric
+            st.subheader("Key Metrics")
             col1, col2, col3, col4 = st.columns(4)
+            col1.metric("Sharpe Ratio", f"{qs.stats.sharpe(port_returns):.2f}")
+            col2.metric("Max Drawdown", f"{qs.stats.max_drawdown(port_returns)*100:.2f}%")
+            col3.metric("CAGR", f"{qs.stats.cagr(port_returns)*100:.2f}%")
+            col4.metric("Volatility", f"{qs.stats.volatility(port_returns)*100:.2f}%")
 
-            col1.metric(
-                "Sharpe Ratio",
-                f"{qs.stats.sharpe(portofolio_returns):.2f}")
+            # Alokasi stock manual vs optimization
+            st.markdown("---")
+            st.subheader("Portfolio Allocation")
+            col_pie_1, col_pie_2 = st.columns(2)
 
-            col2.metric(
-                "Max Drawdown",
-                f"{qs.stats.max_drawdown(portofolio_returns)*100:.2f}%")
+            with col_pie_1:
+                st.markdown("**Your Allocation**")
+                fig_pie = px.pie(names=tickers, values=weights, hole=0.4)
+                fig_pie.update_traces(textinfo="percent+label")
+                st.plotly_chart(fig_pie, use_container_width=True)
 
-            col3.metric(
-                "CAGR",
-                f"{qs.stats.cagr(portofolio_returns)*100:.2f}%")
+            with col_pie_2:
+                st.markdown("**Optimized (Mean Veriance Optimization)**")
+                fig_opt = px.pie(names=tickers, values=opt_weights, hole=0.4, 
+                                 color_discrete_sequence=px.colors.sequential.RdBu)
+                fig_opt.update_traces(textinfo="percent+label")
+                st.plotly_chart(fig_opt, use_container_width=True)
 
-            col4.metric(
-                "Volatility",
-                f"{qs.stats.volatility(portofolio_returns)*100:.2f}%")
+            # Perbandingan portofolio manual vs hasil optimasi
+            st.markdown("---")
+            st.subheader("Cumulative Returns Comparison")
 
-            # Alokasi portofolio (pie chart)
-            st.subheader("Portofolio Allocation")
-            
-            fig_pie = px.pie(
-                names=tickers,
-                values=weights,
-            )
-            fig_pie.update_traces(textinfo="percent+label")
-            st.plotly_chart(fig_pie, width="stretch")
+            comparison_df = pd.DataFrame({
+                "Your Portfolio": (1 + port_returns).cumprod(),
+                "Optimized Portfolio": (1 + opt_returns).cumprod()
+            })
+            st.line_chart(comparison_df)
 
-            # Heatmap return bulanan
-            st.subheader("Montly Return Heatmap")
+            # Visual - Heatmap
+            st.markdown("---")
+            st.subheader("Monthly Return Heatmap")
             st.dataframe(
-                portofolio_returns
-                .monthly_returns()
-                .style.format("{:.2%}")
+                port_returns.monthly_returns().style.format("{:.2%}"), 
+                use_container_width=True
             )
 
-            # Cumulative returns
-            st.subheader("Cumulative Returns")
-            st.line_chart((1 + portofolio_returns).cumprod())
-
-            # Return Tahunan
+            # Visual - Yearly Return
             st.subheader("End-of-Year Returns")
-            yearly_returns = portofolio_returns.resample('YE').apply(
-                lambda x: (x + 1).prod() - 1
-            )
+            yearly_returns = port_returns.resample('YE').apply(lambda x: (x + 1).prod() - 1)
             st.bar_chart(yearly_returns)
+            
 
-            # Generate laporan HTMl
+            # Generate Report/laporan ke HTML
             with tempfile.TemporaryDirectory() as tmpdir:
-                report_path = os.path.join(
-                    tmpdir,
-                    "portofolio_report.html"
-                )
-
-                qs.reports.html(
-                    portofolio_returns,
-                    output=report_path,
-                    title="Portofolio Performance Report"
-                )
-
+                report_path = os.path.join(tmpdir, "portofolio_report.html")
+                qs.reports.html(port_returns, output=report_path, title="Portfolio Performance Report")
+                
                 with open(report_path, "r", encoding="utf-8") as file:
                     html_content = file.read()
 
@@ -162,11 +184,11 @@ def main():
                     label="📥 Download Full Report (HTML)",
                     data=html_content,
                     file_name="portofolio_report.html",
-                    mime="text/html"
+                    mime="text/html",
+                    use_container_width=True
                 )
 
-        st.success("Analysis Successful!, Explore your portfolio metric above.")
+        st.success("Analysis Successful!")
 
-# run-
 if __name__ == "__main__":
     main()
