@@ -1,29 +1,34 @@
-## 📊 Portfolio Analytics Dashboard
+## Portfolio Analytics Dashboard
 
-![Demo](assets/demo.gif)
+<!-- ![Demo](assets/demo.gif) -->
 
-Dashboard saham yang menampilkan alokasi portofolio, Sharpe Ratio, CAGR, volatilitas saham dan penurunan nilai aset. **Laporan performa portofolio dapat langsung diunduh dengan mudah**
+Dashboard analitik yang mengintegrasikan **Modern Portfolio Theory (MPT)** untuk membantu investor mengoptimalkan alokasi aset dan mencari efisiensi maksimal dalam manajemen risiko.
 
+![ss](assets\screenshots\pict.png)
+
+Proyek ini menggunakan logika optimasi Mean-Variance untuk meminimalkan negatif dari Sharpe Ratio:$$Sharpe Ratio = \frac{R_p - R_f}{\sigma_p}$$Di mana $R_p$ adalah return portofolio dan $\sigma_p$ adalah standar deviasi (risiko). Dengan mencari titik tertinggi pada Efficient Frontier, kita mendapatkan alokasi aset yang paling optimal secara matematis.
 
 ### ✨ Fitur
 ---
 
-- Data saham real time & Alokasi beban portofolio
-- Key performance metrics: Sharpe Ratio, CAGR, Max Drawdown, Volatility
-- Monthly & yearly return charts 
-- Report performa portofolio (**HTML**) yang dapat diunduh
+* **Performance Metrics**: Analisis performa menggunakan library `QuantStats`, mencakup *Sharpe Ratio*, *Max Drawdown*, *CAGR*, dan *Volatility*.
+* **Visual Comparison**: Visualisasi alokasi aset antara user portofolio dengan hasil optimasi MVO.
+* **Normalization**: Fitur pada input bobot untuk selalu memastikan total alokasi aset selalu 100%.
+* **HTML Report**: Dapat Mendownload secara langsung laporan performa p0rtofolio secara lengkap.
 
 
 ### 🛠️ Tools
 ---
 
-- **Framework**: Streamlit
-- **Library Data**: `yfinance`, `quantstats`  
-- **Data Processing**: Pandas
-- **Visualisasi**: Plotly Express
+* **Language**: Python 3.x
+* **Framework**: Streamlit (Dashboard UI)
+* **Data Source**: `yfinance`
+* **Mathematics & Optimization**: `NumPy`, `SciPy` (SLSQP Method)
+* **Analytics**: `QuantStats`
+* **Visualization**: Plotly Express
 
 
-### 🚀 How to Run
+### How to Run
 ---
 
 1. **clone repository**
@@ -37,7 +42,10 @@ Dashboard saham yang menampilkan alokasi portofolio, Sharpe Ratio, CAGR, volatil
 
     ```bash
     python -m venv venv
+    # Windows
     venv\Scripts\activate
+    # Mac/Linux
+    source venv/bin/activate
     ```
 
 3. **install dependencies**
