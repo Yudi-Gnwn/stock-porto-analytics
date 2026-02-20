@@ -4,9 +4,13 @@
 
 Dashboard analitik yang mengintegrasikan **Modern Portfolio Theory (MPT)** untuk membantu investor mengoptimalkan alokasi aset dan mencari efisiensi maksimal dalam manajemen risiko.
 
-![ss](assets\screenshots\pict.png)
+![Dashboard Preview](assets/screenshots/pict.png)
 
-Proyek ini menggunakan logika optimasi Mean-Variance untuk meminimalkan negatif dari Sharpe Ratio:$$Sharpe Ratio = \frac{R_p - R_f}{\sigma_p}$$Di mana $R_p$ adalah return portofolio dan $\sigma_p$ adalah standar deviasi (risiko). Dengan mencari titik tertinggi pada Efficient Frontier, kita mendapatkan alokasi aset yang paling optimal secara matematis.
+Proyek ini menggunakan logika optimasi Mean-Variance untuk meminimalkan negatif dari Sharpe Ratio:
+
+$$Sharpe Ratio = \frac{R_p - R_f}{\sigma_p}$$
+
+Di mana $R_p$ adalah return portofolio dan $\sigma_p$ adalah standar deviasi (risiko). Dengan mencari titik tertinggi pada Efficient Frontier, kita mendapatkan alokasi aset yang paling optimal secara matematis.
 
 ### ✨ Fitur
 ---
