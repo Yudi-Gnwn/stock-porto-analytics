@@ -42,24 +42,39 @@ def main():
 
     st.sidebar.header("Portofolio Configuration")
 
-    # ticker - US Stock
-    us_ticker = [ 
+    # ticker - US Stock & Crypto
+    asset_ticker = [ 
         "AAPL", "MSFT", "GOOGL", "AMZN", "NVDA", 
-        "META", "TSLA", "JPM", "V", "BRK-B"
+        "META", "TSLA", "JPM", "V", "BRK-B",
+        "BTC-USD", "ETH-USD", "SOL-USD"
     ]
 
     # Selector 
-    tickers = st.sidebar.multiselect(
-        "Select US Stock",
-        options=us_ticker,
-        default=["AAPL", "AMZN", "TSLA", "GOOGL"]
+    selected_tickers = st.sidebar.multiselect(
+        "Select Assets (Stocks & Crypto)",
+        options=asset_ticker,
+        default=["AAPL", "TSLA", "BTC-USD", "ETH-USD"]
     )
+
+    # input custom ticker manual
+    st.sidebar.markdown("---")
+    st.sidebar.markdown("### Add Custom Tickers")
+    st.sidebar.caption("Pisahkan dengan koma. Contoh: BBCA.JK, GOTO.JK, DOGE-USD")
+    custom_tickers_input = st.sidebar.text_input("Enter custom tickers here:")
+
+    # Gabung & bersihkan list ticker
+    tickers = list(selected_tickers) # Ambil dari multiselect
+    if custom_tickers_input:
+        custom_list = [t.strip().upper() for t in custom_tickers_input.split(',')]
+        for ct in custom_list:
+            if ct != "" and ct not in tickers:
+                tickers.append(ct)
 
     # Input bobot portofolio 
     weights = []
     if tickers:
         st.sidebar.markdown("### Assign Portfolio Weights")
-        st.sidebar.info("Pastikan bobot saham anda 1.0")
+        st.sidebar.info("Pastikan bobot aset anda 1.0")
         for ticker in tickers:
             weight = st.sidebar.slider(
                 f"Weight for {ticker}",
