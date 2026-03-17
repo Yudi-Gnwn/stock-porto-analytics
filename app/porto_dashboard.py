@@ -10,7 +10,7 @@ import os
 
 # Logic - Mean Variance Optimization
 def optimize_portfolio(returns):
-    """Mencari bobot optimal untuk memaksimalkan Sharpe Ratio."""
+    """Finding the optimal weight to maximize the Sharpe Ratio."""
     num_assets = len(returns.columns)
     mean_returns = returns.mean()
     cov_matrix = returns.cov()
@@ -35,7 +35,7 @@ def optimize_portfolio(returns):
 def main():
     # Konfigurasi Halaman - Streamlit
     st.set_page_config(
-        page_title="Portfolio Analytics Dashboard", 
+        page_title="Portfolio Analytics", 
         layout="wide"
     )
     st.title("Portfolio Analytics Dashboard")
@@ -44,23 +44,23 @@ def main():
 
     # ticker - US Stock & Crypto
     asset_ticker = [ 
-        "AAPL", "MSFT", "GOOGL", "AMZN", "NVDA", 
-        "META", "TSLA", "JPM", "V", "BRK-B",
+        "AAPL", "MSFT", "GOOGL", "AMZN", 
+        "META", "NVDA", "TSLA", "BRK-B",
         "BTC-USD", "ETH-USD", "SOL-USD"
     ]
 
     # Selector 
     selected_tickers = st.sidebar.multiselect(
-        "Select Assets (Stocks & Crypto)",
+        "Select Assets (US Stocks & Crypto)",
         options=asset_ticker,
-        default=["AAPL", "TSLA", "BTC-USD", "ETH-USD"]
+        default=["AAPL", "TSLA", "BTC-USD"]
     )
 
     # input custom ticker manual
     st.sidebar.markdown("---")
-    st.sidebar.markdown("### Add Custom Tickers")
-    st.sidebar.caption("Pisahkan dengan koma. Contoh: BBCA.JK, GOTO.JK, DOGE-USD")
-    custom_tickers_input = st.sidebar.text_input("Enter custom tickers here:")
+    st.sidebar.markdown("Select Assets Manually")
+    st.sidebar.caption("Ex: BBCA.JK, DOGE-USD")
+    custom_tickers_input = st.sidebar.text_input("Enter assets here:")
 
     # Gabung & bersihkan list ticker
     tickers = list(selected_tickers) # Ambil dari multiselect
@@ -73,8 +73,8 @@ def main():
     # Input bobot portofolio 
     weights = []
     if tickers:
-        st.sidebar.markdown("### Assign Portfolio Weights")
-        st.sidebar.info("Pastikan bobot aset anda 1.0")
+        st.sidebar.markdown("Portfolio Weighting")
+        st.sidebar.info("Make sure your asset weight is 1.0")
         for ticker in tickers:
             weight = st.sidebar.slider(
                 f"Weight for {ticker}",
@@ -92,16 +92,16 @@ def main():
             
             # warning: user input > 1.0
             if round(total_weight, 2) != 1.0:
-                st.sidebar.info(f"Note: Total input {total_weight:.2f} otomatis dinormalisasi ke 1.0")
+                st.sidebar.info(f"Note: Total input {total_weight:.2f} automatically normalized to 1.0")
                 
         else:
             # Kalau user nge-set semua slider ke 0
-            st.error("Total bobot tidak boleh nol.")
+            st.error("Total weight cannot be zero.")
             st.stop()
 
     # Input tanggal
     start_date, end_date = st.sidebar.date_input(
-        "Select Date Range",
+        "Select date range",
         value=(pd.to_datetime("2024-01-01"), pd.to_datetime("today"))
     )
 
@@ -175,7 +175,7 @@ def main():
 
             # Visual - Heatmap
             st.markdown("---")
-            st.subheader("Monthly Return Heatmap")
+            st.subheader("Monthly Return")
             st.dataframe(
                 port_returns.monthly_returns().style.format("{:.2%}"), 
                 use_container_width=True
